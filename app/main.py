@@ -1,12 +1,20 @@
 import uuid
 from datetime import datetime, timezone
 from fastapi import FastAPI, UploadFile, File, HTTPException
-from google.cloud import firestore
 from app.models import InvoiceResponse
 from app.vision import extract_invoice_data
 
 app = FastAPI(title="InvoiceFlow", version="1.0.0")
-db = firestore.Client()
+
+# Lazy Firestore client — only initialized on first request, not at import time
+_db = None
+
+def get_db():
+    global _db
+    if _db is None:
+        from google.cloud import firestore
+        _db = firestore.Client()
+    return _db
 
 @app.get("/health")
 def health():
@@ -37,13 +45,13 @@ async def upload_invoice(file: UploadFile = File(...)):
         "status": "processed"
     }
 
-    db.collection("invoices").document(invoice_id).set(doc)
+    get_db().collection("invoices").document(invoice_id).set(doc)
 
     return InvoiceResponse(**doc)
 
 @app.get("/invoice/{invoice_id}", response_model=InvoiceResponse)
 def get_invoice(invoice_id: str):
-    doc = db.collection("invoices").document(invoice_id).get()
+    doc = get_db().collection("invoices").document(invoice_id).get()
     if not doc.exists:
         raise HTTPException(status_code=404, detail="Invoice not found.")
     return InvoiceResponse(**doc.to_dict())
