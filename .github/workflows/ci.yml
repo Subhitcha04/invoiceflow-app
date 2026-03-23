@@ -123,7 +123,7 @@ jobs:
       - name: Checkout config repo
         uses: actions/checkout@v4
         with:
-          repository: YOUR_USERNAME/invoiceflow-config
+          repository: Subhitcha04/invoiceflow-config
           token: ${{ secrets.GH_PAT }}
 
       - name: Update image tag in manifest
