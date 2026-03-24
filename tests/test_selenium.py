@@ -2,72 +2,117 @@ import pytest
 import threading
 import time
 import os
+import socket
 import uvicorn
+
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
-from unittest.mock import patch, MagicMock
 
-# ── Start a real FastAPI server in a background thread ──
+
+# ---------- Server ----------
 def run_server():
     from app.main import app
     uvicorn.run(app, host="127.0.0.1", port=8001, log_level="error")
+
+
+def wait_for_server(host="127.0.0.1", port=8001, timeout=10):
+    start = time.time()
+    while time.time() - start < timeout:
+        try:
+            with socket.create_connection((host, port), timeout=1):
+                return True
+        except OSError:
+            time.sleep(0.5)
+    raise RuntimeError("Server did not start in time")
+
 
 @pytest.fixture(scope="module", autouse=True)
 def start_server():
     thread = threading.Thread(target=run_server, daemon=True)
     thread.start()
-    time.sleep(2)  # Wait for server to start
+    wait_for_server()  # ✅ robust readiness check
     yield
 
+
+# ---------- Driver ----------
 @pytest.fixture(scope="module")
 def driver():
     options = Options()
-    options.add_argument("--headless")
+    options.add_argument("--headless=new")  # ✅ modern headless
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
     options.add_argument("--window-size=1920,1080")
 
-    service = Service(ChromeDriverManager().install())
+    # ✅ CRITICAL FIX: use system chromedriver (from CI setup)
+    service = Service()
+
     d = webdriver.Chrome(service=service, options=options)
     yield d
     d.quit()
 
+
+# ---------- Tests ----------
+BASE_URL = "http://127.0.0.1:8001"
+
+
 def test_homepage_loads(driver):
-    driver.get("http://127.0.0.1:8001/")
+    driver.get(BASE_URL + "/")
     assert "InvoiceFlow" in driver.title or "InvoiceFlow" in driver.page_source
 
+
 def test_upload_button_present(driver):
-    driver.get("http://127.0.0.1:8001/")
+    driver.get(BASE_URL)
     wait = WebDriverWait(driver, 10)
-    btn = wait.until(EC.presence_of_element_located((By.ID, "uploadBtn")))
+
+    btn = wait.until(
+        EC.presence_of_element_located((By.ID, "uploadBtn"))
+    )
+
     assert btn is not None
-    assert btn.text == "Upload Invoice"
+    assert btn.text.strip().lower() == "upload invoice"
+
 
 def test_file_input_present(driver):
-    driver.get("http://127.0.0.1:8001/")
-    file_input = driver.find_element(By.ID, "fileInput")
-    assert file_input is not None
-
-def test_upload_invoice_e2e(driver):
-    driver.get("http://127.0.0.1:8001/")
+    driver.get(BASE_URL)
     wait = WebDriverWait(driver, 10)
 
-    # Upload the sample invoice
-    file_input = driver.find_element(By.ID, "fileInput")
+    file_input = wait.until(
+        EC.presence_of_element_located((By.ID, "fileInput"))
+    )
+
+    assert file_input is not None
+
+
+def test_upload_invoice_e2e(driver):
+    driver.get(BASE_URL)
+    wait = WebDriverWait(driver, 10)
+
+    # Upload file
+    file_input = wait.until(
+        EC.presence_of_element_located((By.ID, "fileInput"))
+    )
+
     sample_path = os.path.abspath("tests/sample_invoice.jpg")
+
+    if not os.path.exists(sample_path):
+        raise FileNotFoundError(f"Missing test file: {sample_path}")
+
     file_input.send_keys(sample_path)
 
     # Click upload
-    btn = driver.find_element(By.ID, "uploadBtn")
+    btn = wait.until(
+        EC.element_to_be_clickable((By.ID, "uploadBtn"))
+    )
     btn.click()
 
-    # Wait for result to appear
-    time.sleep(3)
-    result = driver.find_element(By.ID, "result")
-    assert result.text != ""  # Some response came back
+    # Wait for result
+    result = wait.until(
+        EC.presence_of_element_located((By.ID, "result"))
+    )
+
+    assert result.text.strip() != ""
