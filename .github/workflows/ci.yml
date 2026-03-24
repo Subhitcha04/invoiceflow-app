@@ -39,6 +39,7 @@ jobs:
           name: coverage-report
           path: coverage.xml
 
+
   # ── Job 1b: Selenium E2E Tests ──
   selenium:
     name: Selenium E2E Tests
@@ -52,24 +53,26 @@ jobs:
         with:
           python-version: "3.11"
 
-      # Modern Chrome install (no apt-key)
-      - name: Install Chrome
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y wget gnupg
-          wget -qO- https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor > google.gpg
-          sudo install -o root -g root -m 644 google.gpg /usr/share/keyrings/
-          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google.gpg] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
-          sudo apt-get update
-          sudo apt-get install -y google-chrome-stable
+      # ✅ Install Chrome + Chromedriver (managed properly)
+      - name: Setup Chrome
+        uses: browser-actions/setup-chrome@v1
+
+      - name: Setup Chromedriver
+        uses: nanasess/setup-chromedriver@v2
 
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install -r app/requirements.txt pytest selenium webdriver-manager aiofiles
+          pip install -r app/requirements.txt pytest selenium aiofiles
+
+      - name: Verify Chrome setup
+        run: |
+          google-chrome --version
+          chromedriver --version
 
       - name: Run Selenium tests
         run: pytest tests/test_selenium.py -v
+
 
   # ── Job 2: SonarQube Code Quality ──
   sonarcloud:
@@ -97,6 +100,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
+
   # ── Job 3: Trivy Security Scan ──
   trivy:
     name: Trivy Container Scan
@@ -116,6 +120,7 @@ jobs:
           format: table
           exit-code: "1"
           severity: CRITICAL
+
 
   # ── Job 4: Build & Push ──
   build-push:
@@ -148,6 +153,7 @@ jobs:
           docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/invoiceflow/api:${{ steps.vars.outputs.sha }} .
           docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/invoiceflow/api:${{ steps.vars.outputs.sha }}
 
+
   # ── Job 5: Update Config Repo ──
   update-config:
     name: Update Config Repo
@@ -167,5 +173,5 @@ jobs:
           git config user.email "ci@invoiceflow.com"
           git config user.name "CI Bot"
           git add k8s/green/deployment.yaml
-          git commit -m "ci: update green image to ${{ needs.build-push.outputs.image_tag }}" || echo "No changes to commit"
+          git commit -m "ci: update green image to ${{ needs.build-push.outputs.image_tag }}" || echo "No changes"
           git push
