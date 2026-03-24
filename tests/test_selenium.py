@@ -4,7 +4,8 @@ import time
 import os
 import socket
 import uvicorn
-
+from PIL import Image
+import tempfile
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -55,7 +56,13 @@ def driver():
     yield d
     d.quit()
 
+def create_test_image():
+    img = Image.new("RGB", (200, 100), color="white")
 
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
+    img.save(temp_file.name, format="JPEG")
+
+    return temp_file.name
 # ---------- Tests ----------
 BASE_URL = "http://127.0.0.1:8001"
 
@@ -97,10 +104,7 @@ def test_upload_invoice_e2e(driver):
         EC.presence_of_element_located((By.ID, "fileInput"))
     )
 
-    sample_path = os.path.abspath("tests/sample_invoice.jpg")
-
-    if not os.path.exists(sample_path):
-        raise FileNotFoundError(f"Missing test file: {sample_path}")
+    sample_path = create_test_image()
 
     file_input.send_keys(sample_path)
 
