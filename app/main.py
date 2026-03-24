@@ -3,8 +3,19 @@ from datetime import datetime, timezone
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from app.models import InvoiceResponse
 from app.vision import extract_invoice_data
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+import os
 
 app = FastAPI(title="InvoiceFlow", version="1.0.0")
+
+static_dir = os.path.join(os.path.dirname(__file__), "static")
+if os.path.exists(static_dir):
+    app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
+@app.get("/")
+def root():
+    return FileResponse(os.path.join(static_dir, "index.html"))
 
 # Lazy Firestore client — only initialized on first request, not at import time
 _db = None
@@ -55,3 +66,4 @@ def get_invoice(invoice_id: str):
     if not doc.exists:
         raise HTTPException(status_code=404, detail="Invoice not found.")
     return InvoiceResponse(**doc.to_dict())
+
