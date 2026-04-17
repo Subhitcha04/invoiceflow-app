@@ -53,12 +53,13 @@ jobs:
         with:
           python-version: "3.11"
 
-      # ✅ Install Chrome + Chromedriver (managed properly)
-      - name: Setup Chrome
-        uses: browser-actions/setup-chrome@v1
-
-      - name: Setup Chromedriver
-        uses: nanasess/setup-chromedriver@v2
+      # ✅ CLEAN INSTALL (your step integrated correctly)
+      - name: Install Chrome and ChromeDriver
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y chromium-browser chromium-chromedriver
+          sudo ln -sf /usr/bin/chromium-browser /usr/bin/google-chrome
+          sudo ln -sf /usr/lib/chromium-browser/chromedriver /usr/bin/chromedriver
 
       - name: Install dependencies
         run: |
