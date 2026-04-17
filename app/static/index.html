@@ -2,27 +2,606 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>InvoiceFlow</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>InvoiceFlow — Intelligent Document Processing</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      min-height: 100vh;
+    }
+
+    /* NAV */
+    nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 40px;
+      background: rgba(255,255,255,0.04);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      backdrop-filter: blur(10px);
+      position: sticky; top: 0; z-index: 100;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; font-size: 20px; font-weight: 700; }
+    .logo-icon {
+      width: 36px; height: 36px; background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      border-radius: 8px; display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+    .nav-pills { display: flex; gap: 8px; }
+    .pill {
+      padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 500;
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+      color: #94a3b8; cursor: pointer; transition: all 0.2s;
+      text-decoration: none;
+    }
+    .pill:hover, .pill.active { background: #6366f1; color: white; border-color: #6366f1; }
+    .status-badge {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 14px; border-radius: 20px;
+      background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3);
+      color: #10b981; font-size: 13px; font-weight: 500;
+    }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: #10b981; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    /* HERO */
+    .hero {
+      text-align: center; padding: 80px 20px 40px;
+      background: radial-gradient(ellipse at 50% 0%, rgba(99,102,241,0.15) 0%, transparent 70%);
+    }
+    .hero-tag {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 12px; border-radius: 20px;
+      background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.3);
+      color: #818cf8; font-size: 12px; font-weight: 600; letter-spacing: 0.5px;
+      text-transform: uppercase; margin-bottom: 20px;
+    }
+    h1 { font-size: 52px; font-weight: 800; line-height: 1.15; margin-bottom: 16px; }
+    h1 span { background: linear-gradient(135deg, #6366f1, #a78bfa, #38bdf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .subtitle { color: #94a3b8; font-size: 18px; max-width: 520px; margin: 0 auto 40px; line-height: 1.6; }
+
+    /* PIPELINE STATUS */
+    .pipeline {
+      display: flex; align-items: center; justify-content: center;
+      gap: 0; margin: 0 auto 60px; max-width: 700px;
+      flex-wrap: wrap;
+    }
+    .pipeline-step {
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      padding: 12px 20px;
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 10px; min-width: 100px;
+    }
+    .pipeline-step .icon { font-size: 20px; }
+    .pipeline-step .label { font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; }
+    .pipeline-step .status { font-size: 11px; font-weight: 600; }
+    .status-green { color: #10b981; }
+    .status-blue { color: #38bdf8; }
+    .arrow { color: #334155; font-size: 18px; margin: 0 4px; }
+
+    /* MAIN LAYOUT */
+    .main { max-width: 1100px; margin: 0 auto; padding: 0 20px 80px; }
+
+    /* UPLOAD CARD */
+    .upload-card {
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 20px; overflow: hidden; margin-bottom: 32px;
+    }
+    .card-header {
+      padding: 20px 28px; border-bottom: 1px solid rgba(255,255,255,0.06);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .card-header h2 { font-size: 16px; font-weight: 600; }
+    .card-header .badge {
+      padding: 2px 8px; border-radius: 6px;
+      background: rgba(99,102,241,0.2); color: #818cf8;
+      font-size: 11px; font-weight: 600;
+    }
+    .card-body { padding: 28px; }
+
+    /* DROP ZONE */
+    .dropzone {
+      border: 2px dashed rgba(99,102,241,0.4); border-radius: 16px;
+      padding: 60px 20px; text-align: center; cursor: pointer;
+      transition: all 0.3s; position: relative; background: rgba(99,102,241,0.03);
+    }
+    .dropzone:hover, .dropzone.drag-over {
+      border-color: #6366f1; background: rgba(99,102,241,0.08);
+    }
+    .dropzone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+    .dz-icon { font-size: 48px; margin-bottom: 16px; }
+    .dz-title { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+    .dz-sub { color: #64748b; font-size: 14px; margin-bottom: 16px; }
+    .dz-formats {
+      display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+    }
+    .fmt-tag {
+      padding: 4px 10px; border-radius: 6px;
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+      font-size: 12px; color: #94a3b8; font-weight: 500;
+    }
+
+    /* FILE PREVIEW */
+    .file-preview {
+      display: none; align-items: center; gap: 16px;
+      padding: 20px; background: rgba(99,102,241,0.08);
+      border: 1px solid rgba(99,102,241,0.2); border-radius: 12px; margin-top: 16px;
+    }
+    .file-preview.show { display: flex; }
+    .file-icon-big {
+      width: 52px; height: 52px; border-radius: 10px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      display: flex; align-items: center; justify-content: center; font-size: 22px;
+      flex-shrink: 0;
+    }
+    .file-info { flex: 1; }
+    .file-name { font-weight: 600; font-size: 15px; margin-bottom: 4px; }
+    .file-size { color: #64748b; font-size: 13px; }
+    .remove-btn {
+      background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3);
+      color: #ef4444; border-radius: 8px; padding: 6px 12px;
+      cursor: pointer; font-size: 13px; font-weight: 500;
+    }
+
+    /* UPLOAD BTN */
+    .upload-btn {
+      width: 100%; margin-top: 20px; padding: 16px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      border: none; border-radius: 12px; color: white;
+      font-size: 16px; font-weight: 600; cursor: pointer;
+      transition: all 0.2s; display: flex; align-items: center;
+      justify-content: center; gap: 10px;
+    }
+    .upload-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 25px rgba(99,102,241,0.4); }
+    .upload-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    /* PROGRESS */
+    .progress-wrap { margin-top: 16px; display: none; }
+    .progress-wrap.show { display: block; }
+    .progress-label { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; color: #94a3b8; }
+    .progress-bar { height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, #6366f1, #8b5cf6); border-radius: 3px; width: 0%; transition: width 0.3s; }
+
+    /* RESULT */
+    .result-card {
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 20px; overflow: hidden; display: none;
+    }
+    .result-card.show { display: block; }
+    .result-header {
+      padding: 20px 28px; border-bottom: 1px solid rgba(255,255,255,0.06);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .result-title { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 600; }
+    .success-badge {
+      padding: 4px 10px; border-radius: 6px;
+      background: rgba(16,185,129,0.15); color: #10b981;
+      font-size: 12px; font-weight: 600; border: 1px solid rgba(16,185,129,0.3);
+    }
+    .result-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; padding: 28px; }
+    .result-field {
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px; padding: 16px;
+    }
+    .field-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #475569; font-weight: 600; margin-bottom: 8px; }
+    .field-value { font-size: 16px; font-weight: 600; color: #e2e8f0; word-break: break-all; }
+    .field-value.empty { color: #475569; font-style: italic; font-weight: 400; }
+
+    .raw-text-section { padding: 0 28px 28px; }
+    .raw-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #475569; font-weight: 600; margin-bottom: 10px; }
+    .raw-text {
+      background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 10px; padding: 16px; font-family: 'Courier New', monospace;
+      font-size: 13px; color: #94a3b8; max-height: 160px; overflow-y: auto;
+      white-space: pre-wrap; line-height: 1.6;
+    }
+
+    /* STATS */
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
+    .stat-card {
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px; padding: 20px;
+    }
+    .stat-label { font-size: 12px; color: #64748b; font-weight: 500; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-value { font-size: 28px; font-weight: 700; }
+    .stat-sub { font-size: 12px; color: #64748b; margin-top: 4px; }
+    .c-green { color: #10b981; }
+    .c-blue { color: #38bdf8; }
+    .c-purple { color: #a78bfa; }
+    .c-amber { color: #fbbf24; }
+
+    /* HISTORY */
+    .history-card {
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 20px; overflow: hidden;
+    }
+    .history-list { padding: 8px; }
+    .history-item {
+      display: flex; align-items: center; gap: 16px;
+      padding: 14px 20px; border-radius: 10px; cursor: pointer;
+      transition: background 0.15s;
+    }
+    .history-item:hover { background: rgba(255,255,255,0.04); }
+    .h-icon {
+      width: 38px; height: 38px; border-radius: 8px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; flex-shrink: 0;
+    }
+    .h-info { flex: 1; }
+    .h-name { font-size: 14px; font-weight: 500; margin-bottom: 3px; }
+    .h-meta { font-size: 12px; color: #64748b; }
+    .h-amount { font-size: 16px; font-weight: 700; color: #10b981; }
+    .empty-history { text-align: center; padding: 40px; color: #475569; font-size: 14px; }
+
+    /* ERROR */
+    .error-banner {
+      display: none; align-items: center; gap: 12px;
+      padding: 16px 20px; background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.3); border-radius: 12px;
+      color: #fca5a5; margin-top: 16px; font-size: 14px;
+    }
+    .error-banner.show { display: flex; }
+
+    @media (max-width: 768px) {
+      h1 { font-size: 32px; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .pipeline { gap: 4px; }
+      .arrow { display: none; }
+    }
+  </style>
 </head>
 <body>
-  <h1>InvoiceFlow — Invoice Upload</h1>
-  <form id="uploadForm">
-    <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.pdf"/>
-    <button type="submit" id="uploadBtn">Upload Invoice</button>
-  </form>
-  <div id="result"></div>
 
-  <script>
-    document.getElementById('uploadForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const file = document.getElementById('fileInput').files[0];
-      const formData = new FormData();
-      formData.append('file', file);
+<nav>
+  <div class="logo">
+    <div class="logo-icon">📄</div>
+    InvoiceFlow
+  </div>
+  <div class="nav-pills">
+    <a class="pill active" onclick="showSection('upload')">Upload</a>
+    <a class="pill" onclick="showSection('history')">History</a>
+  </div>
+  <div class="status-badge">
+    <div class="dot"></div>
+    System Online
+  </div>
+</nav>
 
-      const res = await fetch('/invoice/upload', { method: 'POST', body: formData });
+<div class="hero">
+  <div class="hero-tag">⚡ Powered by Google Cloud Vision AI</div>
+  <h1>Intelligent <span>Invoice</span><br>Processing Pipeline</h1>
+  <p class="subtitle">Upload any invoice — PDF or image — and get structured data extracted instantly using AI-powered OCR.</p>
+
+  <div class="pipeline">
+    <div class="pipeline-step">
+      <div class="icon">📤</div>
+      <div class="label">Upload</div>
+      <div class="status status-green">Ready</div>
+    </div>
+    <div class="arrow">›</div>
+    <div class="pipeline-step">
+      <div class="icon">🔍</div>
+      <div class="label">OCR</div>
+      <div class="status status-green">Vision AI</div>
+    </div>
+    <div class="arrow">›</div>
+    <div class="pipeline-step">
+      <div class="icon">🧠</div>
+      <div class="label">Extract</div>
+      <div class="status status-green">FastAPI</div>
+    </div>
+    <div class="arrow">›</div>
+    <div class="pipeline-step">
+      <div class="icon">🗄️</div>
+      <div class="label">Store</div>
+      <div class="status status-green">Firestore</div>
+    </div>
+    <div class="arrow">›</div>
+    <div class="pipeline-step">
+      <div class="icon">☸️</div>
+      <div class="label">Deploy</div>
+      <div class="status status-blue">GKE</div>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- STATS -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">Invoices Processed</div>
+      <div class="stat-value c-green" id="stat-count">0</div>
+      <div class="stat-sub">This session</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Deployment</div>
+      <div class="stat-value c-blue" style="font-size:18px;margin-top:4px">Blue-Green</div>
+      <div class="stat-sub">Zero downtime</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">API Health</div>
+      <div class="stat-value c-green" id="api-health">Checking...</div>
+      <div class="stat-sub">FastAPI backend</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">GitOps</div>
+      <div class="stat-value c-purple" style="font-size:18px;margin-top:4px">Argo CD</div>
+      <div class="stat-sub">Auto-synced</div>
+    </div>
+  </div>
+
+  <!-- UPLOAD SECTION -->
+  <div id="section-upload">
+    <div class="upload-card">
+      <div class="card-header">
+        <span style="font-size:18px">📤</span>
+        <h2>Upload Invoice</h2>
+        <span class="badge">AI Extraction</span>
+      </div>
+      <div class="card-body">
+        <div class="dropzone" id="dropzone">
+          <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.pdf">
+          <div class="dz-icon">📄</div>
+          <div class="dz-title">Drop your invoice here</div>
+          <div class="dz-sub">or click to browse files</div>
+          <div class="dz-formats">
+            <span class="fmt-tag">PDF</span>
+            <span class="fmt-tag">JPEG</span>
+            <span class="fmt-tag">PNG</span>
+          </div>
+        </div>
+
+        <div class="file-preview" id="filePreview">
+          <div class="file-icon-big">📄</div>
+          <div class="file-info">
+            <div class="file-name" id="fileName">invoice.pdf</div>
+            <div class="file-size" id="fileSize">0 KB</div>
+          </div>
+          <button class="remove-btn" onclick="clearFile()">Remove</button>
+        </div>
+
+        <div class="error-banner" id="errorBanner">
+          ⚠️ <span id="errorMsg">Something went wrong</span>
+        </div>
+
+        <div class="progress-wrap" id="progressWrap">
+          <div class="progress-label">
+            <span id="progressLabel">Uploading...</span>
+            <span id="progressPct">0%</span>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+        </div>
+
+        <button class="upload-btn" id="uploadBtn" onclick="uploadInvoice()" disabled>
+          <span>⚡</span> Process Invoice with AI
+        </button>
+      </div>
+    </div>
+
+    <!-- RESULT -->
+    <div class="result-card" id="resultCard">
+      <div class="result-header">
+        <div class="result-title">
+          <span>✅</span>
+          Extraction Complete
+        </div>
+        <span class="success-badge">Processed</span>
+      </div>
+      <div class="result-grid">
+        <div class="result-field">
+          <div class="field-label">🏢 Vendor</div>
+          <div class="field-value" id="res-vendor">—</div>
+        </div>
+        <div class="result-field">
+          <div class="field-label">💰 Total Amount</div>
+          <div class="field-value c-green" id="res-amount">—</div>
+        </div>
+        <div class="result-field">
+          <div class="field-label">📅 Invoice Date</div>
+          <div class="field-value" id="res-date">—</div>
+        </div>
+        <div class="result-field">
+          <div class="field-label">🔑 Invoice ID</div>
+          <div class="field-value" id="res-id" style="font-size:11px;font-family:monospace">—</div>
+        </div>
+      </div>
+      <div class="raw-text-section">
+        <div class="raw-label">📝 Raw Extracted Text</div>
+        <div class="raw-text" id="res-raw">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HISTORY SECTION -->
+  <div id="section-history" style="display:none">
+    <div class="history-card">
+      <div class="card-header">
+        <span style="font-size:18px">🗂️</span>
+        <h2>Invoice History</h2>
+        <span class="badge" id="history-count">0 records</span>
+      </div>
+      <div class="history-list" id="historyList">
+        <div class="empty-history">No invoices processed yet. Upload one to get started.</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const history = [];
+  let sessionCount = 0;
+
+  // Check API health
+  async function checkHealth() {
+    try {
+      const r = await fetch('/health');
+      const d = await r.json();
+      document.getElementById('api-health').textContent = d.status === 'ok' ? '✓ Online' : 'Degraded';
+    } catch {
+      document.getElementById('api-health').textContent = '✗ Offline';
+      document.getElementById('api-health').style.color = '#ef4444';
+    }
+  }
+  checkHealth();
+  setInterval(checkHealth, 30000);
+
+  // Section nav
+  function showSection(s) {
+    document.getElementById('section-upload').style.display = s === 'upload' ? 'block' : 'none';
+    document.getElementById('section-history').style.display = s === 'history' ? 'block' : 'none';
+    document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+    event.target.classList.add('active');
+  }
+
+  // File handling
+  const fileInput = document.getElementById('fileInput');
+  const dropzone = document.getElementById('dropzone');
+
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) showFile(fileInput.files[0]);
+  });
+
+  dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+  dropzone.addEventListener('drop', e => {
+    e.preventDefault(); dropzone.classList.remove('drag-over');
+    if (e.dataTransfer.files[0]) { fileInput.files = e.dataTransfer.files; showFile(e.dataTransfer.files[0]); }
+  });
+
+  function showFile(f) {
+    document.getElementById('fileName').textContent = f.name;
+    document.getElementById('fileSize').textContent = (f.size / 1024).toFixed(1) + ' KB';
+    document.getElementById('filePreview').classList.add('show');
+    document.getElementById('uploadBtn').disabled = false;
+    document.getElementById('resultCard').classList.remove('show');
+    document.getElementById('errorBanner').classList.remove('show');
+  }
+
+  function clearFile() {
+    fileInput.value = '';
+    document.getElementById('filePreview').classList.remove('show');
+    document.getElementById('uploadBtn').disabled = true;
+    document.getElementById('resultCard').classList.remove('show');
+  }
+
+  // Upload
+  async function uploadInvoice() {
+    const file = fileInput.files[0];
+    if (!file) return;
+
+    const btn = document.getElementById('uploadBtn');
+    const pw = document.getElementById('progressWrap');
+    const pf = document.getElementById('progressFill');
+    const pl = document.getElementById('progressLabel');
+    const pp = document.getElementById('progressPct');
+    const err = document.getElementById('errorBanner');
+
+    btn.disabled = true;
+    err.classList.remove('show');
+    pw.classList.add('show');
+
+    // Animate progress
+    const steps = [
+      [20, 'Uploading file...'],
+      [45, 'Running OCR via Vision AI...'],
+      [70, 'Extracting structured data...'],
+      [90, 'Saving to Firestore...'],
+    ];
+
+    let i = 0;
+    const interval = setInterval(() => {
+      if (i < steps.length) {
+        pf.style.width = steps[i][0] + '%';
+        pl.textContent = steps[i][1];
+        pp.textContent = steps[i][0] + '%';
+        i++;
+      }
+    }, 600);
+
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch('/invoice/upload', { method: 'POST', body: form });
+      clearInterval(interval);
+
+      if (!res.ok) {
+        const e = await res.json();
+        throw new Error(e.detail || 'Upload failed');
+      }
+
+      pf.style.width = '100%'; pl.textContent = 'Complete!'; pp.textContent = '100%';
+
       const data = await res.json();
-      document.getElementById('result').innerText = JSON.stringify(data, null, 2);
-    });
-  </script>
+      setTimeout(() => { pw.classList.remove('show'); showResult(data, file.name); }, 500);
+
+    } catch (e) {
+      clearInterval(interval);
+      pw.classList.remove('show');
+      document.getElementById('errorMsg').textContent = e.message;
+      err.classList.add('show');
+      btn.disabled = false;
+    }
+  }
+
+  function showResult(data, filename) {
+    document.getElementById('res-vendor').textContent = data.vendor || '—';
+    document.getElementById('res-vendor').className = 'field-value' + (data.vendor ? '' : ' empty');
+    document.getElementById('res-amount').textContent = data.total_amount ? '₹ ' + data.total_amount : '—';
+    document.getElementById('res-date').textContent = data.invoice_date || '—';
+    document.getElementById('res-id').textContent = data.id;
+    document.getElementById('res-raw').textContent = data.raw_text || 'No text extracted';
+    document.getElementById('resultCard').classList.add('show');
+
+    sessionCount++;
+    document.getElementById('stat-count').textContent = sessionCount;
+
+    history.unshift({ id: data.id, filename, vendor: data.vendor, amount: data.total_amount, date: data.invoice_date });
+    renderHistory();
+
+    document.getElementById('uploadBtn').disabled = false;
+    clearFile();
+  }
+
+  function renderHistory() {
+    const list = document.getElementById('historyList');
+    document.getElementById('history-count').textContent = history.length + ' records';
+    if (!history.length) {
+      list.innerHTML = '<div class="empty-history">No invoices processed yet.</div>';
+      return;
+    }
+    list.innerHTML = history.map(h => `
+      <div class="history-item" onclick="fetchInvoice('${h.id}')">
+        <div class="h-icon">📄</div>
+        <div class="h-info">
+          <div class="h-name">${h.filename}</div>
+          <div class="h-meta">${h.vendor || 'Unknown vendor'} · ${h.date || 'No date'} · ID: ${h.id.slice(0,8)}...</div>
+        </div>
+        <div class="h-amount">${h.amount ? '₹' + h.amount : '—'}</div>
+      </div>
+    `).join('');
+  }
+
+  async function fetchInvoice(id) {
+    try {
+      const r = await fetch('/invoice/' + id);
+      const data = await r.json();
+      showSection_direct('upload');
+      showResult(data, 'Invoice #' + id.slice(0,8));
+    } catch {}
+  }
+
+  function showSection_direct(s) {
+    document.getElementById('section-upload').style.display = 'block';
+    document.getElementById('section-history').style.display = 'none';
+    document.querySelectorAll('.pill').forEach((p,i) => { p.classList.toggle('active', i===0); });
+  }
+</script>
 </body>
 </html>
