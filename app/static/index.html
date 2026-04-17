@@ -593,8 +593,18 @@
       const r = await fetch('/invoice/' + id);
       const data = await r.json();
       showSection_direct('upload');
-      showResult(data, 'Invoice #' + id.slice(0,8));
-    } catch {}
+      // Show result without re-uploading
+      document.getElementById('res-vendor').textContent = data.vendor || '—';
+      document.getElementById('res-amount').textContent = data.total_amount ? '₹ ' + data.total_amount : '—';
+      document.getElementById('res-date').textContent = data.invoice_date || '—';
+      document.getElementById('res-id').textContent = data.id;
+      document.getElementById('res-raw').textContent = data.raw_text || 'No text extracted';
+      document.getElementById('resultCard').classList.add('show');
+      // Scroll to result
+      document.getElementById('resultCard').scrollIntoView({ behavior: 'smooth' });
+    } catch(e) {
+      alert('Could not fetch invoice: ' + e.message);
+    }
   }
 
   function showSection_direct(s) {
