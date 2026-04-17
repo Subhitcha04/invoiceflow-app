@@ -1,0 +1,7 @@
+1. terraform apply                          ← recreates GKE cluster (~8 mins)
+2. gcloud container clusters get-credentials invoiceflow-cluster --region asia-south1 --project cat-2-491109
+3. gcloud artifacts repositories create invoiceflow --repository-format=docker --location=asia-south1
+4. git push on invoiceflow-app              ← triggers CI, builds & pushes image
+5. kubectl apply argocd install.yaml        ← reinstalls Argo CD
+6. kubectl apply all shared services        ← recreates invoiceflow namespace
+7. helm install monitoring                  ← reinstalls Grafana/Prometheus

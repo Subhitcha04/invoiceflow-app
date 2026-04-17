@@ -27,6 +27,7 @@ jobs:
 
       - name: Install dependencies
         run: |
+          set -e
           pip install --upgrade pip
           pip install -r app/requirements.txt pytest pytest-cov httpx
 
@@ -53,16 +54,27 @@ jobs:
         with:
           python-version: "3.11"
 
-      # ✅ CLEAN INSTALL (your step integrated correctly)
+      # ✅ FIXED: Idempotent Chrome + Chromedriver setup
       - name: Install Chrome and ChromeDriver
         run: |
+          set -e
+
           sudo apt-get update
           sudo apt-get install -y chromium-browser chromium-chromedriver
-          sudo ln -sf /usr/bin/chromium-browser /usr/bin/google-chrome
-          sudo ln -sf /usr/lib/chromium-browser/chromedriver /usr/bin/chromedriver
+
+          # Ensure chrome alias exists (safe)
+          if [ ! -f /usr/bin/google-chrome ]; then
+            sudo ln -s /usr/bin/chromium-browser /usr/bin/google-chrome
+          fi
+
+          # Ensure chromedriver path exists (safe)
+          if [ ! -f /usr/bin/chromedriver ]; then
+            sudo ln -s /usr/lib/chromium-browser/chromedriver /usr/bin/chromedriver
+          fi
 
       - name: Install dependencies
         run: |
+          set -e
           pip install --upgrade pip
           pip install -r app/requirements.txt pytest selenium aiofiles
 
@@ -72,6 +84,8 @@ jobs:
           chromedriver --version
 
       - name: Run Selenium tests
+        env:
+          PYTHONUNBUFFERED: 1
         run: pytest tests/test_selenium.py -v
 
 
@@ -151,6 +165,7 @@ jobs:
 
       - name: Build & Push
         run: |
+          set -e
           docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/invoiceflow/api:${{ steps.vars.outputs.sha }} .
           docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/invoiceflow/api:${{ steps.vars.outputs.sha }}
 
@@ -169,10 +184,13 @@ jobs:
 
       - name: Update manifest
         run: |
+          set -e
+
           sed -i "s|image:.*|image: ${{ env.REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/invoiceflow/api:${{ needs.build-push.outputs.image_tag }}|" k8s/green/deployment.yaml
 
           git config user.email "ci@invoiceflow.com"
           git config user.name "CI Bot"
+
           git add k8s/green/deployment.yaml
           git commit -m "ci: update green image to ${{ needs.build-push.outputs.image_tag }}" || echo "No changes"
           git push
