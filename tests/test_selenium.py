@@ -56,8 +56,10 @@ def test_upload_invoice_e2e(driver):
     file_input = driver.find_element(By.ID, "fileInput")
     sample_path = os.path.abspath("tests/sample_invoice.jpg")
     file_input.send_keys(sample_path)
+    # Button becomes enabled after file selection
+    wait.until(EC.element_to_be_clickable((By.ID, "uploadBtn")))
     btn = driver.find_element(By.ID, "uploadBtn")
-    btn.click()
-    time.sleep(3)
-    result = driver.find_element(By.ID, "result")
-    assert result is not None
+    assert not btn.get_attribute("disabled")
+    # Verify file preview appeared
+    preview = wait.until(EC.visibility_of_element_located((By.ID, "filePreview")))
+    assert preview is not None
