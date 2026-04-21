@@ -280,6 +280,3 @@ invoiceflow-config/           # Config Repo
 
 ---
 
-## License
-
-MIT
